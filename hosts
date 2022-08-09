@@ -1,0 +1,6 @@
+# My Ansible Inventory
+
+# Home DNS servers
+[eric_home_dns]
+ns1.home.ericoc.com
+ns2.home.ericoc.com

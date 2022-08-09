@@ -1,0 +1,60 @@
+---
+
+- name: Synchronize the bind working directory with Git
+  git:
+    repo: "{{ bind_repo }}"
+    dest: "{{ bind_path }}"
+    force: yes
+  register: git_sync
+
+- name: Check that the configuration is valid
+  shell: "named-checkconf {{ bind_path }}/named.conf"
+  register: check_conf
+  changed_when: False
+  failed_when: check_conf.rc != 0 or check_conf.stderr | length > 0
+
+- name: Reload the configuration if it is safe to do so
+  shell: "rndc reconfig"
+  register: reconfig
+  when:
+    - check_conf is succeeded
+  changed_when: False
+  failed_when: reconfig.rc != 0 or reconfig.stderr | length > 0
+
+- name: Determine live serial number of zones
+  shell: "dig @localhost {{ item.zone }} soa +short | cut -d' ' -f3"
+  register: live_serials
+  loop: "{{ bind_zones }}"
+  changed_when: False
+  failed_when: live_serials.rc != 0 or live_serials.stderr | length > 0
+
+- name: Populate bind zone dictionary with live serial numbers
+  set_fact:
+    bind_zones_live: "{{ bind_zones_live | default([]) + [ {'zone': item.item.zone, 'file': item.item.file, 'live_serial': item.stdout} ] }}"
+  loop: "{{ live_serials.results }}"
+  loop_control:
+    label: "{{ item.item.zone }}"
+
+- name: Check zone files
+  shell: "named-checkzone {{ item.zone }} {{ bind_path }}/{{ item.file }} | fgrep serial | cut -d' ' -f5"
+  register: check_zone
+  loop: "{{ bind_zones_live }}"
+  changed_when: False
+  failed_when: check_zone.rc != 0 or check_zone.stderr | length > 0
+
+- name: Populate bind zone dictionary with file serial numbers
+  set_fact:
+    bind_zones_serials: "{{ bind_zones_serials | default([]) + [ {'zone': item.item.zone, 'file': item.item.file, 'live_serial': item.item.live_serial, 'file_serial': item.stdout} ] }}"
+  loop: "{{ check_zone.results }}"
+  loop_control:
+    label: "{{ item.item.zone }}"
+
+- name: Reload any zones with misaligned serial numbers
+  shell: "rndc reload {{ item.zone }}"
+  register: reload_zone
+  loop: "{{ bind_zones_serials }}"
+  when:
+    - item.live_serial != item.file_serial
+    - check_zone is succeeded
+  changed_when: reload_zone.stdout is search('zone reload queued')
+  failed_when: reload_zone.rc != 0 or reload_zone.stderr | length > 0

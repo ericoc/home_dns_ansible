@@ -1,0 +1,22 @@
+bind_repo: ssh://git@github.com/ericoc/home_dns.git
+bind_path: /etc/bind
+
+bind_zones:
+
+  - zone: home.ericoc.com.
+    file: home.ericoc.com.zone
+
+  - zone: blacklist.rpz.home.ericoc.com.
+    file: blacklist.rpz.home.ericoc.com.zone
+
+  - zone: whitelist.rpz.home.ericoc.com.
+    file: whitelist.rpz.home.ericoc.com.zone
+
+  - zone: rpz.home.ericoc.com.
+    file: rpz.home.ericoc.com.zone
+
+  - zone: 1.168.192.in-addr.arpa.
+    file: db.1.1.168.192.in-addr.arpa.zone
+
+  - zone: 1.e.0.a.0.0.2.0.3.4.0.0.1.0.6.2.ip6.arpa.
+    file: db.1.e.0.a.0.0.2.0.3.4.0.0.1.0.6.2.ip6.arpa.zone

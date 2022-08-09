@@ -1,0 +1,7 @@
+- hosts: eric_home_dns
+  gather_facts: no
+  become: yes
+  serial: yes
+  any_errors_fatal: true
+  roles:
+    - home_dns
